@@ -59,6 +59,41 @@ Node* slist_lookup(Slist *list,int32_t key)
         return (cur);
 }
 
+Slist* slist_look_del(Slist *list, int32_t key)
+{
+    assert(list != NULL);
+    Node *temp,*prev;
+    prev->next = NULL;
+    temp=list->head;
+    if(list->length == 1){
+        list->head=NULL;
+        list->tail=NULL;
+        list->length = 0;
+    }
+    else if (temp != NULL && temp->data == key)
+    {
+        list->head = temp->next;
+	--list->length;
+        return list;
+    }
+    else{
+    for(temp=list->head;temp!=NULL;temp=temp->next){
+
+
+        if(temp->data == key)
+        {
+            prev->next=temp->next;
+
+
+        }
+        prev = temp;
+    }
+    free(temp);
+--list->length;
+   }
+
+    return list;
+}
 
 Slist* slist_delete_head(Slist *list)
 {
@@ -135,6 +170,7 @@ Slist* slist_repl_head(Slist *list, Node* repl)
 
     return list;
 }
+
 
 
 
