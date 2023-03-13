@@ -41,100 +41,98 @@
 namespace gem5
 {
 
-struct ARCRPParams;
+  struct ARCRPParams;
 
-GEM5_DEPRECATED_NAMESPACE(ReplacementPolicy, replacement_policy);
-namespace replacement_policy
-{
+  GEM5_DEPRECATED_NAMESPACE(ReplacementPolicy, replacement_policy);
+  namespace replacement_policy
+  {
 
-class ARC : public Base
-{
-  protected:
-    /** ARC-specific implementation of replacement data. */
-    struct ARCReplData : ReplacementData
+    class ARC : public Base
     {
+    protected:
+      /** ARC-specific implementation of replacement data. */
+      struct ARCReplData : ReplacementData
+      {
         /** Tick on which the entry was last touched. */
         Tick lastTouchTick;
-	
-	//True if in first list (either T or B), False if in second
-	bool inList1 = 0;
-	//True if in Top list (either first or second), False if in B
-	bool inTop = 0;
-	
+
+        // True if in first list (either T or B), False if in second
+        bool inList1 = 0;
+        // True if in Top list (either first or second), False if in B
+        bool inTop = 0;
+
         /**
          * Default constructor. Invalidate data.
          */
         ARCReplData() : inList1(0), inTop(0), lastTouchTick(0) {}
+      };
+
+      // I think we can remove above lastTouchTick?
+      unsigned int c = 0; // set*way;
+      unsigned int p = 0;
+
+      Slist s1 = slist_new();
+      Slist *T1 = &s1;
+
+      Slist s2 = slist_new();
+      Slist *B1 = &s2;
+
+      Slist s3 = slist_new();
+      Slist *T2 = &s3;
+
+      Slist s4 = slist_new();
+      Slist *B2 = &s4;
+
+    public:
+      typedef ARCRPParams Params;
+      ARC(const Params &p);
+      ~ARC() = default;
+
+      /**
+       * Invalidate replacement data to set it as the next probable victim.
+       * Sets its last touch tick as the starting tick.
+       *
+       * @param replacement_data Replacement data to be invalidated.
+       */
+      void invalidate(const std::shared_ptr<ReplacementData> &replacement_data)
+          override;
+
+      /**
+       * Touch an entry to update its replacement data.
+       * Sets its last touch tick as the current tick.
+       *
+       * @param replacement_data Replacement data to be touched.
+       */
+      void touch(const std::shared_ptr<ReplacementData> &replacement_data) const
+          override;
+
+      /**
+       * Reset replacement data. Used when an entry is inserted.
+       * Sets its last touch tick as the current tick.
+       *
+       * @param replacement_data Replacement data to be reset.
+       */
+      void reset(const std::shared_ptr<ReplacementData> &replacement_data) const
+          override;
+
+      /**
+       * Find replacement victim using ARC timestamps.
+       *
+       * @param candidates Replacement candidates, selected by indexing policy.
+       * @return Replacement entry to be replaced.
+       */
+      ReplaceableEntry *getVictim(const ReplacementCandidates &candidates) const
+          override;
+
+      /**
+       * Instantiate a replacement data entry.
+       *
+       * @return A shared pointer to the new replacement data.
+       */
+      std::shared_ptr<ReplacementData> instantiateEntry() override;
     };
 
-    //I think we can remove above lastTouchTick?
-    unsigned int c = 0; //set*way;
-    unsigned int p = 0;
-    
-    Slist s1 = slist_new();
-    Slist *T1 = &s1; 
-
-    Slist s2 = slist_new(); 
-    Slist *B1 = &s2;
-
-    Slist s3 = slist_new(); 
-    Slist *T2 = &s3;
-
-    Slist s4 = slist_new(); 
-    Slist *B2 = &s4;
-
-
-
-  public:
-    typedef ARCRPParams Params;
-    ARC(const Params &p);
-    ~ARC() = default;
-
-    /**
-     * Invalidate replacement data to set it as the next probable victim.
-     * Sets its last touch tick as the starting tick.
-     *
-     * @param replacement_data Replacement data to be invalidated.
-     */
-    void invalidate(const std::shared_ptr<ReplacementData>& replacement_data)
-                                                                    override;
-
-    /**
-     * Touch an entry to update its replacement data.
-     * Sets its last touch tick as the current tick.
-     *
-     * @param replacement_data Replacement data to be touched.
-     */
-    void touch(const std::shared_ptr<ReplacementData>& replacement_data) const
-                                                                     override;
-
-    /**
-     * Reset replacement data. Used when an entry is inserted.
-     * Sets its last touch tick as the current tick.
-     *
-     * @param replacement_data Replacement data to be reset.
-     */
-    void reset(const std::shared_ptr<ReplacementData>& replacement_data) const
-                                                                     override;
-
-    /**
-     * Find replacement victim using ARC timestamps.
-     *
-     * @param candidates Replacement candidates, selected by indexing policy.
-     * @return Replacement entry to be replaced.
-     */
-    ReplaceableEntry* getVictim(const ReplacementCandidates& candidates) const
-                                                                     override;
-
-    /**
-     * Instantiate a replacement data entry.
-     *
-     * @return A shared pointer to the new replacement data.
-     */
-    std::shared_ptr<ReplacementData> instantiateEntry() override;
-};
-
-} // namespace replacement_policy
+  } // namespace replacement_policy
 } // namespace gem5
 
 #endif // __MEM_CACHE_REPLACEMENT_POLICIES_ARC_RP_HH__

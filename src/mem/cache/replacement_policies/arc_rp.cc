@@ -37,78 +37,87 @@
 namespace gem5
 {
 
-GEM5_DEPRECATED_NAMESPACE(ReplacementPolicy, replacement_policy);
-namespace replacement_policy
-{
+    GEM5_DEPRECATED_NAMESPACE(ReplacementPolicy, replacement_policy);
+    namespace replacement_policy
+    {
 
-ARC::ARC(const Params &p)
-  : Base(p)
-{
-}
-
-void
-ARC::invalidate(const std::shared_ptr<ReplacementData>& replacement_data)
-{
-    // Reset last touch timestamp
-    std::static_pointer_cast<ARCReplData>(
-        replacement_data)->lastTouchTick = Tick(0);
-}
-
-void
-ARC::touch(const std::shared_ptr<ReplacementData>& replacement_data) const
-{
-
-    //if it is in list 1
-    if(std::static_pointer_cast<ARCReplData>(replacement_data)->inList1){
-	slist_look_del(T1, replacement_data);
-    }
-    //if it is in list 2
-    else{
-	slist_repl_head(T2, replacement_data);
-    }
-
-
-    // Move to MRU position in T2
-    std::static_pointer_cast<ARCReplData>(
-        replacement_data)->inList1 = 0;
-    std::static_pointer_cast<ARCReplData>(
-        replacement_data)->inTop = 1;
-}
-
-void
-ARC::reset(const std::shared_ptr<ReplacementData>& replacement_data) const
-{
-    // Set last touch timestamp
-    std::static_pointer_cast<ARCReplData>(
-        replacement_data)->lastTouchTick = curTick();
-}
-
-ReplaceableEntry*
-ARC::getVictim(const ReplacementCandidates& candidates) const
-{
-    // There must be at least one replacement candidate
-    assert(candidates.size() > 0);
-
-    // Visit all candidates to find victim
-    ReplaceableEntry* victim = candidates[0];
-    for (const auto& candidate : candidates) {
-        // Update victim entry if necessary
-        if (std::static_pointer_cast<ARCReplData>(
-                    candidate->replacementData)->lastTouchTick <
-                std::static_pointer_cast<ARCReplData>(
-                    victim->replacementData)->lastTouchTick) {
-            victim = candidate;
+        ARC::ARC(const Params &p)
+            : Base(p)
+        {
         }
-    }
 
-    return victim;
-}
+        void
+        ARC::invalidate(const std::shared_ptr<ReplacementData> &replacement_data)
+        {
+            // Reset last touch timestamp
+            std::static_pointer_cast<ARCReplData>(
+                replacement_data)
+                ->lastTouchTick = Tick(0);
+        }
 
-std::shared_ptr<ReplacementData>
-ARC::instantiateEntry()
-{
-    return std::shared_ptr<ReplacementData>(new ARCReplData());
-}
+        void
+        ARC::touch(const std::shared_ptr<ReplacementData> &replacement_data) const
+        {
 
-} // namespace replacement_policy
+            // if it is in list 1
+            if (std::static_pointer_cast<ARCReplData>(replacement_data)->inList1)
+            {
+                slist_look_del(T1, replacement_data);
+            }
+            // if it is in list 2
+            else
+            {
+                slist_repl_head(T2, replacement_data);
+            }
+
+            // Move to MRU position in T2
+            std::static_pointer_cast<ARCReplData>(
+                replacement_data)
+                ->inList1 = 0;
+            std::static_pointer_cast<ARCReplData>(
+                replacement_data)
+                ->inTop = 1;
+        }
+
+        void
+        ARC::reset(const std::shared_ptr<ReplacementData> &replacement_data) const
+        {
+            // Set last touch timestamp
+            std::static_pointer_cast<ARCReplData>(
+                replacement_data)
+                ->lastTouchTick = curTick();
+        }
+
+        ReplaceableEntry *
+        ARC::getVictim(const ReplacementCandidates &candidates) const
+        {
+            // There must be at least one replacement candidate
+            assert(candidates.size() > 0);
+
+            // Visit all candidates to find victim
+            ReplaceableEntry *victim = candidates[0];
+            for (const auto &candidate : candidates)
+            {
+                // Update victim entry if necessary
+                if (std::static_pointer_cast<ARCReplData>(
+                        candidate->replacementData)
+                        ->lastTouchTick <
+                    std::static_pointer_cast<ARCReplData>(
+                        victim->replacementData)
+                        ->lastTouchTick)
+                {
+                    victim = candidate;
+                }
+            }
+
+            return victim;
+        }
+
+        std::shared_ptr<ReplacementData>
+        ARC::instantiateEntry()
+        {
+            return std::shared_ptr<ReplacementData>(new ARCReplData());
+        }
+
+    } // namespace replacement_policy
 } // namespace gem5
