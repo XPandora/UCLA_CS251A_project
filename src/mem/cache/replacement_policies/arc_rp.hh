@@ -94,6 +94,8 @@ namespace gem5
       uint64_t current_tag;
       unsigned int current_index;
 
+      void REPLACE(const std::shared_ptr<ReplacementData> &replacement_data) override;
+
     public:
       typedef ARCRPParams Params;
       ARC(const Params &p);

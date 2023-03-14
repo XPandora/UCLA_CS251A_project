@@ -52,6 +52,36 @@ namespace gem5
             this->current_index = current_index;
         }
 
+
+	//implementing the REPLACE subroutine
+	//This routine invalidates instead of deleting the LRU page as in paper, 
+	//The invalid ones can be deleted later
+	void
+	ARC::REPLACE(const std::shared_ptr<ReplacementData> &replacement_data)
+	{
+
+	   uint32_t T1_len = slist_length(T1);
+	   ARCReplData *ptr = std::static_pointer_cast<ARCReplData>(replacement_data);
+	   //int32_t *repl_data;
+
+	   //invalidate the LRU page in T1 and move to MRU position in B
+	   if( (T1_len > 0) && ((T1_len > p) || ( 
+		((! ptr->inTop)&&(ptr->status == EntryStatus::inList2) ) && (T1_len == p) )) ){
+		std::static_pointer_cast<ARCReplData>(T1.tail->data)->status = EntryStatus::Invalid;
+
+		slist_add_head(B1, T1.tail->data);
+          	slist_delete_tail(T1);
+	   }
+	   else{
+		std::static_pointer_cast<ARCReplData>(T2.tail->data)->status = EntryStatus::Invalid;
+
+		slist_add_head(B2, T2.tail->data);
+		slist_delete_tail(T2);
+	   }
+
+	   //return repl_data
+	}
+
         void
         ARC::invalidate(const std::shared_ptr<ReplacementData> &replacement_data)
         {
@@ -61,6 +91,7 @@ namespace gem5
                 ->lastTouchTick = Tick(0);
 
             // TODO: remove the corresponding node in L1&L2
+	    // I think removing the node should happen in getVictim? .. will think about it more
             std::static_pointer_cast<ARCReplData>(
                 replacement_data)
                 ->status = EntryStatus::Invalid;
@@ -70,26 +101,76 @@ namespace gem5
         ARC::touch(const std::shared_ptr<ReplacementData> &replacement_data) const
         {
 
-            // if it is in list 1
-            EntryStatus data_status = replacement_data->status;
-            if (data_status == EntryStatus::inList1)
-            {
-                slist_look_del(T1, replacement_data);
-                slist_add_head(T2, replacement_data);
-            }
-            // if it is in list 2
-            else
-            {
-                slist_repl_head(T2, replacement_data);
-            }
-
-            // Move to MRU position in T2
-            std::static_pointer_cast<ARCReplData>(
-                replacement_data)
-                ->inList1 = 0;
-            std::static_pointer_cast<ARCReplData>(
-                replacement_data)
-                ->inTop = 1;
+            EntryStatus data_status = std::static_pointer_cast<ARCReplData>(replacement_data)->status;
+	    bool data_inTop = std::static_pointer_cast<ARCReplData>(replacement_data)->inTop;	    
+	    //case 1
+	    //if it is in T1 or T2, there is a hit -> move to MRU in T2
+	    if(data_inTop){
+	
+	            // if it is in list 1
+	            if (data_status == EntryStatus::inList1)
+	            {
+	                slist_look_del(T1, replacement_data);
+                	slist_add_head(T2, replacement_data);
+        	    }
+	            // if it is in list 2
+        	    else if (data_status == EntryStatus::inList2)
+	            {	
+                	slist_repl_head(T2, replacement_data);
+                    }  
+        	    // Update variables
+	            std::static_pointer_cast<ARCReplData>(replacement_data)->status = EntryStatus::inList2;
+	            //std::static_pointer_cast<ARCReplData>(replacement_data)->inTop = 1;
+	    }
+	    //case 2
+	    //it is in B1
+	    else if( (!data_inTop) && (data_status == EntryStatus::inList1)){
+		//TODO: Adaptation step
+		//not sure how to call REPLACE, is it like this or do we have to add the std::shared...?
+		REPLACE(replacement_data);
+		//move from B1 to MRU in T2
+		slist_look_del(B1, replacement_data);
+		slist_add_head(T2, replacement_data);
+	    }
+	    //case 3
+	    //it is in B2
+	    else if( (!data_inTop) && (data_status == EntryStatus::inList2)){
+		//TODO: Adaptation step
+    		//same question as above
+		REPLACE(replacement_data);
+                //move from B2 to MRU in T2
+		slist_look_del(B1, replacement_data);
+		slist_add_head(T2, replacement_data);
+	    }
+	    //case 4
+	    //it is not in any list
+	    else{
+		//Case A: T1 U B1 has c pages
+		if( (slist_length(T1)+slist_length(B1)) == c){
+			//delete LRU in B1, replace
+			if(slist_length(T1) < c){
+				slist_delete_tail(B1);
+				REPLACE(replacement_data);
+			}
+			//B1 is empty, invalidate LRU page in T1
+			else{
+			std::static_pointer_cast<ARCReplData>(T1.tail->data)->status = EntryStatus::Invalid;
+			}
+		}
+		//Case B: T1 U B1 has less than C pages
+		else{
+			int32_t sum = slist_length(T1) + slist_length(T2)
+			   		+ slist_length(B1) + slist_length(B2);
+			if( sum  >= c){
+			   if( sum == 2*c){
+				   slist_delete_tail(B2);
+			   }
+			   REPLACE(replacement_data);
+			}
+		//move to MRU position in T1
+		slist_add_head(T1, replacement_data);
+		}
+	    }
         }
 
         void
@@ -114,6 +195,12 @@ namespace gem5
 
             // Visit all candidates to find victim
             ReplaceableEntry *victim = candidates[0];
+
+	    //TODO: search for invalid ones first
+	    
+
+	    //TODO: next, go through the lists to find which one is LRU and in candidates?
+
             for (const auto &candidate : candidates)
             {
                 // Update victim entry if necessary

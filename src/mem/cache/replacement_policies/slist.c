@@ -48,10 +48,11 @@ Node *slist_lookup(Slist *list, int32_t key)
     {
         if (cur->data == key)
         {
+	    return(cur);
             break;
         }
     }
-    return (cur);
+    return (NULL);
 }
 
 Slist *slist_look_del(Slist *list, int32_t key)
