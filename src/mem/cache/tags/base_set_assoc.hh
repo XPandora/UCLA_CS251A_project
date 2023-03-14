@@ -146,6 +146,8 @@ class BaseSetAssoc : public BaseTags
             blk->increaseRefCount();
 
             // Update replacement data of accessed block
+            if (typeid(*replacementPolicy).name() == "ARC")
+                dynamic_cast<replacement_policy::ARC *>(replacementPolicy)->setCurrentAddr(blk->getTag(), blk->getSet());
             replacementPolicy->touch(blk->replacementData, pkt);
         }
 
@@ -198,6 +200,8 @@ class BaseSetAssoc : public BaseTags
         stats.tagsInUse++;
 
         // Update replacement policy
+        if (typeid(*replacementPolicy).name() == "ARC")
+            dynamic_cast<replacement_policy::ARC *>(replacementPolicy)->setCurrentAddr(blk->getTag(), blk->getSet());
         replacementPolicy->reset(blk->replacementData, pkt);
     }
 

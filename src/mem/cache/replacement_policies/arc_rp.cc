@@ -46,6 +46,12 @@ namespace gem5
         {
         }
 
+        void setCurrentAddr(uint64_t current_tag, unsigned int current_index)
+        {
+            this->current_tag = current_tag;
+            this->current_index = current_index;
+        }
+
         void
         ARC::invalidate(const std::shared_ptr<ReplacementData> &replacement_data)
         {
@@ -53,6 +59,11 @@ namespace gem5
             std::static_pointer_cast<ARCReplData>(
                 replacement_data)
                 ->lastTouchTick = Tick(0);
+
+            // TODO: remove the corresponding node in L1&L2
+            std::static_pointer_cast<ARCReplData>(
+                replacement_data)
+                ->status = EntryStatus::Invalid;
         }
 
         void
@@ -60,9 +71,11 @@ namespace gem5
         {
 
             // if it is in list 1
-            if (std::static_pointer_cast<ARCReplData>(replacement_data)->inList1)
+            EntryStatus data_status = replacement_data->status;
+            if (data_status == EntryStatus::inList1)
             {
                 slist_look_del(T1, replacement_data);
+                slist_add_head(T2, replacement_data);
             }
             // if it is in list 2
             else
@@ -86,6 +99,11 @@ namespace gem5
             std::static_pointer_cast<ARCReplData>(
                 replacement_data)
                 ->lastTouchTick = curTick();
+
+            // TODO: this is a new block data, move it to the L1
+            std::static_pointer_cast<ARCReplData>(
+                replacement_data)
+                ->status = EntryStatus::inList1;
         }
 
         ReplaceableEntry *

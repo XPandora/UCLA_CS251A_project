@@ -144,12 +144,14 @@ Slist *slist_repl_head(Slist *list, Node *repl)
 {
     assert(list != NULL);
     assert(repl != NULL);
+    assert(list->head != NULL);
 
     Node *temp = list->head;
 
     if (temp != NULL && temp == repl)
     {
         // pass, already head
+        return list;
     }
     else
     {
@@ -161,9 +163,9 @@ Slist *slist_repl_head(Slist *list, Node *repl)
                 temp->next = repl->next;
                 repl->next = list->head;
                 list->head = repl;
+                break;
             }
         }
-        free(temp);
     }
 
     return list;

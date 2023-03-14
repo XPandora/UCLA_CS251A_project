@@ -51,20 +51,28 @@ namespace gem5
     {
     protected:
       /** ARC-specific implementation of replacement data. */
+      enum class EntryStatus
+      {
+        Invalid = -1,
+        inList1 = 0,
+        inList2 = 1
+      };
+
       struct ARCReplData : ReplacementData
       {
         /** Tick on which the entry was last touched. */
         Tick lastTouchTick;
 
         // True if in first list (either T or B), False if in second
-        bool inList1 = 0;
+        EntryStatus status = EntryStatus::Invalid;
         // True if in Top list (either first or second), False if in B
         bool inTop = 0;
+        // 
 
         /**
          * Default constructor. Invalidate data.
          */
-        ARCReplData() : inList1(0), inTop(0), lastTouchTick(0) {}
+        ARCReplData() : inList1(EntryStatus::Invalid), inTop(0), lastTouchTick(0) {}
       };
 
       // I think we can remove above lastTouchTick?
@@ -83,11 +91,15 @@ namespace gem5
       Slist s4 = slist_new();
       Slist *B2 = &s4;
 
+      uint64_t current_tag;
+      unsigned int current_index;
+
     public:
       typedef ARCRPParams Params;
       ARC(const Params &p);
       ~ARC() = default;
-
+      
+      void setCurrentAddr(uint64_t current_tag, unsigned int current_index);
       /**
        * Invalidate replacement data to set it as the next probable victim.
        * Sets its last touch tick as the starting tick.
