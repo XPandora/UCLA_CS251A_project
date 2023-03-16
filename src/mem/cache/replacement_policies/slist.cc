@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <assert.h>
-#include "slist.h"
+#include "slist.hh"
 #include <stdio.h>
 Slist slist_new()
 {
@@ -9,7 +9,7 @@ Slist slist_new()
     return s;
 }
 
-static Node *slist_new_node(int32_t element)
+static Node *slist_new_node(BlockPA element)
 {
     Node *new_node = (Node *)malloc(sizeof(Node));
     new_node->data = element;
@@ -17,7 +17,7 @@ static Node *slist_new_node(int32_t element)
     return new_node;
 }
 
-Slist *slist_add_head(Slist *list, int32_t element)
+Slist *slist_add_head(Slist *list, BlockPA element)
 {
     assert(list != NULL);
     Node *new_node = slist_new_node(element);
@@ -39,7 +39,7 @@ uint32_t slist_length(Slist *list)
     return list->length;
 }
 
-Node *slist_lookup(Slist *list, int32_t key)
+Node *slist_lookup(Slist *list, BlockPA key)
 {
 
     assert(list != NULL);
@@ -48,14 +48,14 @@ Node *slist_lookup(Slist *list, int32_t key)
     {
         if (cur->data == key)
         {
-	    return(cur);
+            return (cur);
             break;
         }
     }
     return (NULL);
 }
 
-Slist *slist_look_del(Slist *list, int32_t key)
+Slist *slist_look_del(Slist *list, BlockPA key)
 {
     assert(list != NULL);
     Node *temp, *prev;
@@ -108,7 +108,7 @@ Slist *slist_delete_head(Slist *list)
     return list;
 }
 
-Slist *slist_add_tail(Slist *list, int32_t element)
+Slist *slist_add_tail(Slist *list, BlockPA element)
 {
     assert(list != NULL);
     Node *new_node = slist_new_node(element);

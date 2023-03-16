@@ -4,10 +4,21 @@
 
 typedef struct _node_ Node;
 typedef struct _slist_ Slist;
+typedef struct _blockPA_ BlockPA;
+
+struct _blockPA_
+{
+    uint64_t tag;
+    unsigned int index;
+    int *status;
+
+    bool operator==(const _blockPA_ &b) const { return tag == b.tag && index == b.index; }
+    bool operator!=(const _blockPA_ &b) const { return tag != b.tag || index != b.index; }
+};
 
 struct _node_
 {
-    int32_t data;
+    BlockPA data;
     Node *next;
 };
 
@@ -27,13 +38,13 @@ Slist slist_new();
 uint32_t slist_length(Slist *list);
 
 /*search for node with key data and return node ptr if found, NULL if not*/
-Node *slist_lookup(Slist *list, int32_t key);
+Node *slist_lookup(Slist *list, BlockPA key);
 /*search for a node and delete it from list*/
-Slist *slist_look_del(Slist *list, int32_t key);
+Slist *slist_look_del(Slist *list, BlockPA key);
 
 /*add head and tail*/
-Slist *slist_add_head(Slist *list, int32_t element);
-Slist *slist_add_tail(Slist *list, int32_t element);
+Slist *slist_add_head(Slist *list, BlockPA element);
+Slist *slist_add_tail(Slist *list, BlockPA element);
 /*delete head and tail*/
 Slist *slist_delete_head(Slist *list);
 Slist *slist_delete_tail(Slist *list);

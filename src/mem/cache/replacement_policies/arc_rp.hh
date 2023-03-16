@@ -36,7 +36,7 @@
 #define __MEM_CACHE_REPLACEMENT_POLICIES_ARC_RP_HH__
 
 #include "mem/cache/replacement_policies/base.hh"
-#include "slist.h"
+#include "slist.hh"
 
 namespace gem5
 {
@@ -64,15 +64,15 @@ namespace gem5
         Tick lastTouchTick;
 
         // True if in first list (either T or B), False if in second
-        EntryStatus status = EntryStatus::Invalid;
+        EntryStatus status;
         // True if in Top list (either first or second), False if in B
-        bool inTop = 0;
+        bool inTop;
         // 
 
         /**
          * Default constructor. Invalidate data.
          */
-        ARCReplData() : inList1(EntryStatus::Invalid), inTop(0), lastTouchTick(0) {}
+        ARCReplData() : status(EntryStatus::Invalid), inTop(0), lastTouchTick(0) {}
       };
 
       // I think we can remove above lastTouchTick?
@@ -94,7 +94,7 @@ namespace gem5
       uint64_t current_tag;
       unsigned int current_index;
 
-      void REPLACE(const std::shared_ptr<ReplacementData> &replacement_data) override;
+      void REPLACE(BlockPA blockPA);
 
     public:
       typedef ARCRPParams Params;

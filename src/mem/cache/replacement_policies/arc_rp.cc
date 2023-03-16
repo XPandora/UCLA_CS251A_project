@@ -46,173 +46,239 @@ namespace gem5
         {
         }
 
-        void setCurrentAddr(uint64_t current_tag, unsigned int current_index)
+        void ARC::setCurrentAddr(uint64_t current_tag, unsigned int current_index)
         {
             this->current_tag = current_tag;
             this->current_index = current_index;
         }
 
+        // implementing the REPLACE subroutine
+        // This routine invalidates instead of deleting the LRU page as in paper,
+        // The invalid ones can be deleted later
+        bool ARC::REPLACE(BlockPA blockPA)
+        {
+            uint32_t T1_len = slist_length(T1);
+            bool remove_L1;
 
-	//implementing the REPLACE subroutine
-	//This routine invalidates instead of deleting the LRU page as in paper, 
-	//The invalid ones can be deleted later
-	void
-	ARC::REPLACE(const std::shared_ptr<ReplacementData> &replacement_data)
-	{
+            // invalidate the LRU page in T1 and move to MRU position in B
+            if (T1_len > 0 && (T1_len > p || (slist_lookup(B2, blockPA) && T1_len == p)))
+                remove_L1 = true;
+            else
+                remove_L1 = false;
 
-	   uint32_t T1_len = slist_length(T1);
-	   ARCReplData *ptr = std::static_pointer_cast<ARCReplData>(replacement_data);
-	   //int32_t *repl_data;
-
-	   //invalidate the LRU page in T1 and move to MRU position in B
-	   if( (T1_len > 0) && ((T1_len > p) || ( 
-		((! ptr->inTop)&&(ptr->status == EntryStatus::inList2) ) && (T1_len == p) )) ){
-		std::static_pointer_cast<ARCReplData>(T1.tail->data)->status = EntryStatus::Invalid;
-
-		slist_add_head(B1, T1.tail->data);
-          	slist_delete_tail(T1);
-	   }
-	   else{
-		std::static_pointer_cast<ARCReplData>(T2.tail->data)->status = EntryStatus::Invalid;
-
-		slist_add_head(B2, T2.tail->data);
-		slist_delete_tail(T2);
-	   }
-
-	   //return repl_data
-	}
+            return remove_L1;
+        }
 
         void
         ARC::invalidate(const std::shared_ptr<ReplacementData> &replacement_data)
         {
             // Reset last touch timestamp
-            std::static_pointer_cast<ARCReplData>(
-                replacement_data)
-                ->lastTouchTick = Tick(0);
+            std::static_pointer_cast<ARCReplData>(replacement_data)->lastTouchTick = Tick(0);
 
             // TODO: remove the corresponding node in L1&L2
-	    // I think removing the node should happen in getVictim? .. will think about it more
-            std::static_pointer_cast<ARCReplData>(
-                replacement_data)
-                ->status = EntryStatus::Invalid;
+            // I think removing the node should happen in getVictim? .. will think about it more
+            BlockPA blockPA{tag, index, (int *)&replacement_data->status};
+            if (std::static_pointer_cast<ARCReplData>(replacement_data)->status == EntryStatus::inList1)
+            {
+                slist_look_del(T1, blockPA);
+            }
+            else if (std::static_pointer_cast<ARCReplData>(replacement_data)->status == EntryStatus::inList2)
+            {
+                slist_look_del(T2, blockPA);
+            }
+            else
+            {
+                // should not invalidate a invalid block
+                assert(false);
+            }
+
+            std::static_pointer_cast<ARCReplData>(replacement_data)->status = EntryStatus::Invalid;
         }
 
         void
         ARC::touch(const std::shared_ptr<ReplacementData> &replacement_data) const
         {
-
+            // touch is always a cache hit
+            // data should always in T1 or T2;
             EntryStatus data_status = std::static_pointer_cast<ARCReplData>(replacement_data)->status;
-	    bool data_inTop = std::static_pointer_cast<ARCReplData>(replacement_data)->inTop;	    
-	    //case 1
-	    //if it is in T1 or T2, there is a hit -> move to MRU in T2
-	    if(data_inTop){
-	
-	            // if it is in list 1
-	            if (data_status == EntryStatus::inList1)
-	            {
-	                slist_look_del(T1, replacement_data);
-                	slist_add_head(T2, replacement_data);
-        	    }
-	            // if it is in list 2
-        	    else if (data_status == EntryStatus::inList2)
-	            {	
-                	slist_repl_head(T2, replacement_data);
-                    }  
-        	    // Update variables
-	            std::static_pointer_cast<ARCReplData>(replacement_data)->status = EntryStatus::inList2;
-	            //std::static_pointer_cast<ARCReplData>(replacement_data)->inTop = 1;
-	    }
-	    //case 2
-	    //it is in B1
-	    else if( (!data_inTop) && (data_status == EntryStatus::inList1)){
-		//TODO: Adaptation step
-		//not sure how to call REPLACE, is it like this or do we have to add the std::shared...?
-		REPLACE(replacement_data);
-		//move from B1 to MRU in T2
-		slist_look_del(B1, replacement_data);
-		slist_add_head(T2, replacement_data);
-	    }
-	    //case 3
-	    //it is in B2
-	    else if( (!data_inTop) && (data_status == EntryStatus::inList2)){
-		//TODO: Adaptation step
-    		//same question as above
-		REPLACE(replacement_data);
-                //move from B2 to MRU in T2
-		slist_look_del(B1, replacement_data);
-		slist_add_head(T2, replacement_data);
-	    }
-	    //case 4
-	    //it is not in any list
-	    else{
-		//Case A: T1 U B1 has c pages
-		if( (slist_length(T1)+slist_length(B1)) == c){
-			//delete LRU in B1, replace
-			if(slist_length(T1) < c){
-				slist_delete_tail(B1);
-				REPLACE(replacement_data);
-			}
-			//B1 is empty, invalidate LRU page in T1
-			else{
-			std::static_pointer_cast<ARCReplData>(T1.tail->data)->status = EntryStatus::Invalid;
-			}
-		}
-		//Case B: T1 U B1 has less than C pages
-		else{
-			int32_t sum = slist_length(T1) + slist_length(T2)
-			   		+ slist_length(B1) + slist_length(B2);
-			if( sum  >= c){
-			   if( sum == 2*c){
-				   slist_delete_tail(B2);
-			   }
-			   REPLACE(replacement_data);
-			}
-		//move to MRU position in T1
-		slist_add_head(T1, replacement_data);
-		}
-	    }
+            bool data_inTop = std::static_pointer_cast<ARCReplData>(replacement_data)->inTop;
+
+            // block data to touch must be valid!
+            assert(data_status != EntryStatus::Invalid);
+            BlockPA blockPA{tag, index, (int *)&replacement_data->status};
+
+            if (data_status == EntryStatus::inList1)
+            {
+                slist_look_del(T1, blockPA);
+                slist_add_head(T2, blockPA);
+            }
+            else if (data_status == EntryStatus::inList2)
+            {
+                slist_repl_head(T2, blockPA);
+            }
+            // Update variables
+            std::static_pointer_cast<ARCReplData>(replacement_data)->status = EntryStatus::inList2;
         }
 
         void
         ARC::reset(const std::shared_ptr<ReplacementData> &replacement_data) const
         {
             // Set last touch timestamp
-            std::static_pointer_cast<ARCReplData>(
-                replacement_data)
-                ->lastTouchTick = curTick();
+            std::static_pointer_cast<ARCReplData>(replacement_data)->lastTouchTick = curTick();
 
-            // TODO: this is a new block data, move it to the L1
-            std::static_pointer_cast<ARCReplData>(
-                replacement_data)
-                ->status = EntryStatus::inList1;
+            BlockPA blockPA{tag, index, (int *)&replacement_data->status};
+            assert(slist_lookup(T1, blockPA) == NULL && slist_lookup(T2, blockPA) == NULL);
+            if (slist_lookup(B1, blockPA) != NULL)
+            {
+                // case 1: found in B1
+                // move from B1 to MRU in T2
+                slist_look_del(B1, blockPA);
+                slist_add_head(T2, blockPA);
+                std::static_pointer_cast<ARCReplData>(replacement_data)->status = EntryStatus::inList2;
+                assert(*blockPA.status == EntryStatus::inList2);
+            }
+            else if (slist_lookup(B2, blockPA) != NULL)
+            {
+                // case 2: found in B2
+                // move from B2 to MRU in T2
+                slist_look_del(B2, blockPA);
+                slist_add_head(T2, blockPA);
+                std::static_pointer_cast<ARCReplData>(replacement_data)->status = EntryStatus::inList2;
+                assert(*blockPA.status == EntryStatus::inList2);
+            }
+            else
+            {
+                // case 3: not found in any list
+                // move to MRU in T1
+                slist_add_head(T1, blockPA);
+                std::static_pointer_cast<ARCReplData>(replacement_data)->status = EntryStatus::inList1;
+                assert(*blockPA.status == EntryStatus::inList1);
+            }
         }
 
         ReplaceableEntry *
         ARC::getVictim(const ReplacementCandidates &candidates) const
         {
+            // Note: routine of handling conflict miss is
+            // 1. call getVictim to find a position
+            // 2. call reset() to insert new data to the position of victim
+            // I only perform operations for victim blocks in getVictim but leave the rest part for reset
+
             // There must be at least one replacement candidate
             assert(candidates.size() > 0);
 
             // Visit all candidates to find victim
-            ReplaceableEntry *victim = candidates[0];
+            ReplaceableEntry *victim = NULL;
 
-	    //TODO: search for invalid ones first
-	    
-
-	    //TODO: next, go through the lists to find which one is LRU and in candidates?
-
+            // search for invalid ones first
             for (const auto &candidate : candidates)
             {
                 // Update victim entry if necessary
-                if (std::static_pointer_cast<ARCReplData>(
-                        candidate->replacementData)
-                        ->lastTouchTick <
-                    std::static_pointer_cast<ARCReplData>(
-                        victim->replacementData)
-                        ->lastTouchTick)
+                if (std::static_pointer_cast<ARCReplData>(candidate->replacementData)->status == EntryStatus::Invalid)
                 {
                     victim = candidate;
+                    return victim;
                 }
+            }
+
+            BlockPA blockPA{tag, index, NULL};
+            // Adaption
+            // use MRU of L1 or L2 as victim
+            bool remove_L1;
+            if (slist_lookup(B1, blockPA) != NULL)
+            {
+                // x in B1, (a miss in ARC(c), a hit in DBL(2c)
+                p = std::min(c, p + std::max(slist_length(B2) / slist_length(B1), 1));
+                remove_L1 = REPLACE(blockPA);
+            }
+            else if (slist_lookup(B2, blockPA) != NULL)
+            {
+                // x in B2 (a miss in ARC(c), a hit in DBL(2c))
+                p = std::max(c, p + std::min(slist_length(B2) / slist_length(B1), 1));
+                remove_L1 = REPLACE(blockPA);
+            }
+            else
+            {
+                // x not found in L1 U L2
+                // Case A: T1 U B1 has c pages
+                if ((slist_length(T1) + slist_length(B1)) == c)
+                {
+                    // delete LRU in B1, replace
+                    if (slist_length(T1) < c)
+                    {
+                        slist_delete_tail(B1);
+                        remove_L1 = REPLACE(blockPA);
+                    }
+                    // B1 is empty, invalidate LRU page in T1
+                    else
+                    {
+                        remove_L1 = true;
+                    }
+                }
+                // Case B: T1 U B1 has less than C pages
+                else
+                {
+                    int32_t sum = slist_length(T1) + slist_length(T2) + slist_length(B1) + slist_length(B2);
+                    if (sum >= c)
+                    {
+                        if (sum == 2 * c)
+                        {
+                            slist_delete_tail(B2);
+                        }
+                        remove_L1 = REPLACE(blockPA);
+                    }
+                    else
+                    {
+                        assert(false);
+                    }
+                }
+            }
+
+            bool remove_L1 = REPLACE(blockPA);
+            if (remove_L1)
+            {
+                // Check T1 list for the LRU one
+                for (const auto &candidate : candidates)
+                {
+                    if (std::static_pointer_cast<ARCReplData>(candidate->replacementData)->status == EntryStatus::inList1)
+                    {
+                        if (victim == NULL)
+                        {
+                            victim = candidate;
+                        }
+                        else if (std::static_pointer_cast<ARCReplData>(candidate->replacementData)->lastTouchTick <
+                                 std::static_pointer_cast<ARCReplData>(victim->replacementData)->lastTouchTick)
+                        {
+                            victim = candidate;
+                        }
+                    }
+                }
+
+                slist_add_head(B1, T1->tail->data);
+                slist_delete_tail(T1);
+            }
+            else
+            {
+                // Check T2 list for the LRU one
+                assert(slist_length(T2) > 0);
+                for (const auto &candidate : candidates)
+                {
+                    if (std::static_pointer_cast<ARCReplData>(candidate->replacementData)->status == EntryStatus::inList2)
+                    {
+                        if (victim == NULL)
+                        {
+                            victim = candidate;
+                        }
+                        else if (std::static_pointer_cast<ARCReplData>(candidate->replacementData)->lastTouchTick <
+                                 std::static_pointer_cast<ARCReplData>(victim->replacementData)->lastTouchTick)
+                        {
+                            victim = candidate;
+                        }
+                    }
+                }
+
+                slist_add_head(B2, T2->tail->data);
+                slist_delete_tail(T2);
             }
 
             return victim;
