@@ -57,7 +57,7 @@
 #include "mem/cache/cache_blk.hh"
 #include "mem/cache/replacement_policies/base.hh"
 #include "mem/cache/replacement_policies/replaceable_entry.hh"
-#include "mem/cache/replacement_policies/arc_rp.hh"
+// #include "mem/cache/replacement_policies/arc_rp.hh"
 #include "mem/cache/tags/base.hh"
 #include "mem/cache/tags/indexing_policies/base.hh"
 #include "mem/packet.hh"
@@ -153,7 +153,8 @@ namespace gem5
 
                 // Update replacement data of accessed block
                 if (typeid(*replacementPolicy).name() == "ARC")
-                    dynamic_cast<replacement_policy::ARC*>(replacementPolicy)->setCurrentAddr(blk->getTag(), blk->getSet());
+                    // dynamic_cast<replacement_policy::ARC*>(replacementPolicy)->setCurrentAddr(blk->getTag(), blk->getSet());
+                    replacementPolicy->setCurrentAddr(blk->getTag(), blk->getSet());
                 replacementPolicy->touch(blk->replacementData, pkt);
             }
 
@@ -185,7 +186,8 @@ namespace gem5
             {
                 uint64_t tag = indexingPolicy->extractTag(addr);
                 unsigned int index = entries[0]->getSet();
-                dynamic_cast<replacement_policy::ARC *>(replacementPolicy)->setCurrentAddr(tag, index);
+                // dynamic_cast<replacement_policy::ARC *>(replacementPolicy)->setCurrentAddr(tag, index);
+                replacementPolicy->setCurrentAddr(tag, index);
             }
             // Choose replacement victim from replacement candidates
             CacheBlk *victim = static_cast<CacheBlk *>(replacementPolicy->getVictim(
@@ -213,7 +215,8 @@ namespace gem5
 
             // Update replacement policy
             if (typeid(*replacementPolicy).name() == "ARC")
-                dynamic_cast<replacement_policy::ARC *>(replacementPolicy)->setCurrentAddr(blk->getTag(), blk->getSet());
+                // dynamic_cast<replacement_policy::ARC *>(replacementPolicy)->setCurrentAddr(blk->getTag(), blk->getSet());
+                replacementPolicy->setCurrentAddr(blk->getTag(), blk->getSet());
             replacementPolicy->reset(blk->replacementData, pkt);
         }
 

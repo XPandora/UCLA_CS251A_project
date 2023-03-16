@@ -33,6 +33,7 @@
 
 #include "params/ARCRP.hh"
 #include "sim/cur_tick.hh"
+// #include "slist.hh"
 
 namespace gem5
 {
@@ -46,16 +47,16 @@ namespace gem5
         {
         }
 
-        void ARC::setCurrentAddr(uint64_t current_tag, unsigned int current_index)
-        {
-            this->current_tag = current_tag;
-            this->current_index = current_index;
-        }
+        // void ARC::setCurrentAddr(uint64_t current_tag, unsigned int current_index)
+        // {
+        //     this->current_tag = current_tag;
+        //     this->current_index = current_index;
+        // }
 
         // implementing the REPLACE subroutine
         // This routine invalidates instead of deleting the LRU page as in paper,
         // The invalid ones can be deleted later
-        bool ARC::REPLACE(BlockPA blockPA)
+        bool ARC::REPLACE(BlockPA blockPA) const
         {
             uint32_t T1_len = slist_length(T1);
             bool remove_L1;
@@ -77,7 +78,7 @@ namespace gem5
 
             // TODO: remove the corresponding node in L1&L2
             // I think removing the node should happen in getVictim? .. will think about it more
-            BlockPA blockPA{tag, index, (int *)&replacement_data->status};
+            BlockPA blockPA{current_tag, current_index, NULL};
             if (std::static_pointer_cast<ARCReplData>(replacement_data)->status == EntryStatus::inList1)
             {
                 slist_look_del(T1, blockPA);
@@ -101,11 +102,11 @@ namespace gem5
             // touch is always a cache hit
             // data should always in T1 or T2;
             EntryStatus data_status = std::static_pointer_cast<ARCReplData>(replacement_data)->status;
-            bool data_inTop = std::static_pointer_cast<ARCReplData>(replacement_data)->inTop;
+            // bool data_inTop = std::static_pointer_cast<ARCReplData>(replacement_data)->inTop;
 
             // block data to touch must be valid!
             assert(data_status != EntryStatus::Invalid);
-            BlockPA blockPA{tag, index, (int *)&replacement_data->status};
+            BlockPA blockPA{current_tag, current_index, NULL};
 
             if (data_status == EntryStatus::inList1)
             {
@@ -114,7 +115,8 @@ namespace gem5
             }
             else if (data_status == EntryStatus::inList2)
             {
-                slist_repl_head(T2, blockPA);
+                Node* node = slist_lookup(T2, blockPA);
+                slist_repl_head(T2, node);
             }
             // Update variables
             std::static_pointer_cast<ARCReplData>(replacement_data)->status = EntryStatus::inList2;
@@ -125,8 +127,10 @@ namespace gem5
         {
             // Set last touch timestamp
             std::static_pointer_cast<ARCReplData>(replacement_data)->lastTouchTick = curTick();
+            std::static_pointer_cast<ARCReplData>(replacement_data)->tag = current_tag;
+            std::static_pointer_cast<ARCReplData>(replacement_data)->index = current_index;
 
-            BlockPA blockPA{tag, index, (int *)&replacement_data->status};
+            BlockPA blockPA{current_tag, current_index, NULL};
             assert(slist_lookup(T1, blockPA) == NULL && slist_lookup(T2, blockPA) == NULL);
             if (slist_lookup(B1, blockPA) != NULL)
             {
@@ -135,7 +139,7 @@ namespace gem5
                 slist_look_del(B1, blockPA);
                 slist_add_head(T2, blockPA);
                 std::static_pointer_cast<ARCReplData>(replacement_data)->status = EntryStatus::inList2;
-                assert(*blockPA.status == EntryStatus::inList2);
+                // assert(*blockPA.status == EntryStatus::inList2);
             }
             else if (slist_lookup(B2, blockPA) != NULL)
             {
@@ -144,7 +148,7 @@ namespace gem5
                 slist_look_del(B2, blockPA);
                 slist_add_head(T2, blockPA);
                 std::static_pointer_cast<ARCReplData>(replacement_data)->status = EntryStatus::inList2;
-                assert(*blockPA.status == EntryStatus::inList2);
+                // assert(*blockPA.status == EntryStatus::inList2);
             }
             else
             {
@@ -152,7 +156,7 @@ namespace gem5
                 // move to MRU in T1
                 slist_add_head(T1, blockPA);
                 std::static_pointer_cast<ARCReplData>(replacement_data)->status = EntryStatus::inList1;
-                assert(*blockPA.status == EntryStatus::inList1);
+                // assert(*blockPA.status == EntryStatus::inList1);
             }
         }
 
@@ -181,20 +185,20 @@ namespace gem5
                 }
             }
 
-            BlockPA blockPA{tag, index, NULL};
+            BlockPA blockPA{current_tag, current_index, NULL};
             // Adaption
             // use MRU of L1 or L2 as victim
             bool remove_L1;
             if (slist_lookup(B1, blockPA) != NULL)
             {
                 // x in B1, (a miss in ARC(c), a hit in DBL(2c)
-                p = std::min(c, p + std::max(slist_length(B2) / slist_length(B1), 1));
+                p = std::min(c, p + std::max(slist_length(B2) / slist_length(B1), (unsigned int)1));
                 remove_L1 = REPLACE(blockPA);
             }
             else if (slist_lookup(B2, blockPA) != NULL)
             {
                 // x in B2 (a miss in ARC(c), a hit in DBL(2c))
-                p = std::max(c, p + std::min(slist_length(B2) / slist_length(B1), 1));
+                p = std::max((unsigned int)0, p - std::max(slist_length(B1) / slist_length(B2), (unsigned int)1));
                 remove_L1 = REPLACE(blockPA);
             }
             else
@@ -234,7 +238,6 @@ namespace gem5
                 }
             }
 
-            bool remove_L1 = REPLACE(blockPA);
             if (remove_L1)
             {
                 // Check T1 list for the LRU one
@@ -254,8 +257,12 @@ namespace gem5
                     }
                 }
 
-                slist_add_head(B1, T1->tail->data);
-                slist_delete_tail(T1);
+                uint64_t tag = std::static_pointer_cast<ARCReplData>(victim->replacementData)->tag;
+                unsigned int index = std::static_pointer_cast<ARCReplData>(victim->replacementData)->index;
+
+                BlockPA victim_block{tag, index, NULL};
+                slist_add_head(B1, victim_block);
+                slist_look_del(T1, victim_block);
             }
             else
             {
@@ -277,8 +284,12 @@ namespace gem5
                     }
                 }
 
-                slist_add_head(B2, T2->tail->data);
-                slist_delete_tail(T2);
+                uint64_t tag = std::static_pointer_cast<ARCReplData>(victim->replacementData)->tag;
+                unsigned int index = std::static_pointer_cast<ARCReplData>(victim->replacementData)->index;
+
+                BlockPA victim_block{tag, index, NULL};
+                slist_add_head(B2, victim_block);
+                slist_look_del(T2, victim_block);
             }
 
             return victim;

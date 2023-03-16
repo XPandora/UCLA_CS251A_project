@@ -59,6 +59,14 @@ class Base : public SimObject
     Base(const Params &p) : SimObject(p) {}
     virtual ~Base() = default;
 
+    uint64_t current_tag;
+    unsigned int current_index;
+
+    void setCurrentAddr(uint64_t current_tag, unsigned int current_index)
+    {
+        this->current_tag = current_tag;
+        this->current_index = current_index;
+    }
     /**
      * Invalidate replacement data to set it as the next probable victim.
      *

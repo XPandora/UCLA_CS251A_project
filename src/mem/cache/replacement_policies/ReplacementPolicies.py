@@ -130,6 +130,12 @@ class DRRIPRP(DuelingRP):
     replacement_policy_b = RRIPRP()
 
 
+class ARCRP(BaseReplacementPolicy):
+    type = "ARCRP"
+    cxx_class = "gem5::replacement_policy::ARC"
+    cxx_header = "mem/cache/replacement_policies/arc_rp.hh"
+
+
 class NRURP(BRRIPRP):
     btp = 100
     num_bits = 1

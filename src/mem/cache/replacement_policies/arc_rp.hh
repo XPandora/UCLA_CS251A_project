@@ -67,7 +67,8 @@ namespace gem5
         EntryStatus status;
         // True if in Top list (either first or second), False if in B
         bool inTop;
-        // 
+        uint64_t tag;
+        unsigned int index;
 
         /**
          * Default constructor. Invalidate data.
@@ -76,8 +77,8 @@ namespace gem5
       };
 
       // I think we can remove above lastTouchTick?
-      unsigned int c = 0; // set*way;
-      unsigned int p = 0;
+      mutable unsigned int c = 0; // set*way;
+      mutable unsigned int p = 0;
 
       Slist s1 = slist_new();
       Slist *T1 = &s1;
@@ -91,17 +92,17 @@ namespace gem5
       Slist s4 = slist_new();
       Slist *B2 = &s4;
 
-      uint64_t current_tag;
-      unsigned int current_index;
+      // uint64_t current_tag;
+      // unsigned int current_index;
 
-      void REPLACE(BlockPA blockPA);
+      bool REPLACE(BlockPA blockPA) const;
 
     public:
       typedef ARCRPParams Params;
       ARC(const Params &p);
       ~ARC() = default;
-      
-      void setCurrentAddr(uint64_t current_tag, unsigned int current_index);
+
+      // void setCurrentAddr(uint64_t current_tag, unsigned int current_index);
       /**
        * Invalidate replacement data to set it as the next probable victim.
        * Sets its last touch tick as the starting tick.
