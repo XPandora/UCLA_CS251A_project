@@ -252,6 +252,16 @@ for i in range(np):
         )
         system.cpu[i].branchPred.indirectBranchPred = indirectBPClass()
 
+    # system.cpu[i].issueWidth = 8
+    issueWdith = 2
+    if args.cpu_type == "X86MinorCPU":
+        system.cpu[i].decodeInputWidth = issueWdith
+        system.cpu[i].executeInputWidth = issueWdith
+        system.cpu[i].executeIssueLimit = issueWdith
+        system.cpu[i].executeCommitLimit = issueWdith
+    elif args.cpu_type == "DerivO3CPU":
+        system.cpu[i].issueWidth = issueWdith
+
     system.cpu[i].createThreads()
 
 if args.ruby:

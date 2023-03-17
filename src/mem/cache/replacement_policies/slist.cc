@@ -58,8 +58,11 @@ Node *slist_lookup(Slist *list, BlockPA key)
 Slist *slist_look_del(Slist *list, BlockPA key)
 {
     assert(list != NULL);
+    if (list->length == 0)
+        return list;
+
     Node *temp, *prev;
-    prev->next = NULL;
+    prev = NULL;
     temp = list->head;
     if (list->length == 1)
     {
@@ -70,6 +73,7 @@ Slist *slist_look_del(Slist *list, BlockPA key)
     else if (temp != NULL && temp->data == key)
     {
         list->head = temp->next;
+        free(temp);
         --list->length;
         return list;
     }
@@ -80,6 +84,7 @@ Slist *slist_look_del(Slist *list, BlockPA key)
 
             if (temp->data == key)
             {
+                assert(prev != NULL);
                 prev->next = temp->next;
             }
             prev = temp;
@@ -102,9 +107,10 @@ Slist *slist_delete_head(Slist *list)
         {
             list->tail = NULL;
         }
+        
+        free(temp);
         --list->length;
     }
-    free(temp);
     return list;
 }
 
@@ -136,6 +142,7 @@ Slist *slist_delete_tail(Slist *list)
             ;
         list->tail = cur;
         cur->next = NULL;
+        free(temp);
         --list->length;
     }
     return list;

@@ -46,5 +46,6 @@ Source('second_chance_rp.cc')
 Source('ship_rp.cc')
 Source('tree_plru_rp.cc')
 Source('weighted_lru_rp.cc')
+Source('slist.cc')
 
 GTest('replaceable_entry.test', 'replaceable_entry.test.cc')

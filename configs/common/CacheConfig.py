@@ -72,6 +72,10 @@ def _get_cache_opts(level, options):
     if hasattr(options, prefetcher_attr):
         opts["prefetcher"] = _get_hwp(getattr(options, prefetcher_attr))
 
+    repl_attr = "{}_repl".format(level)
+    if hasattr(options, repl_attr):
+        opts["replacement_policy"] = ObjectList.repl_list.get(getattr(options, repl_attr))()
+
     return opts
 
 
@@ -149,6 +153,9 @@ def config_cache(options, system):
         if options.caches:
             icache = icache_class(**_get_cache_opts("l1i", options))
             dcache = dcache_class(**_get_cache_opts("l1d", options))
+            # dcache = dcache_class(size=options.l1d_size,
+            #           assoc=options.l1d_assoc,
+            #           replacement_policy=ObjectList.repl_list.get(options.l1d_repl)())
 
             # If we have a walker cache specified, instantiate two
             # instances here
