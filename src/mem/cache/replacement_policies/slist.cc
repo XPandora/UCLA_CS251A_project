@@ -113,7 +113,7 @@ Slist *slist_delete_head(Slist *list)
         {
             list->tail = NULL;
         }
-        
+
         free(temp);
         --list->length;
     }
@@ -191,7 +191,7 @@ Slist *slist_repl_head(Slist *list, Node *repl)
                 }
                 else
                     temp->next = repl->next;
-                
+
                 repl->next = list->head;
                 list->head = repl;
 

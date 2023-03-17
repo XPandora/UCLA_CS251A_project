@@ -83,7 +83,7 @@ namespace gem5
             blk->data = &dataBlks[blkSize * blk_index];
 
             // Associate a replacement data entry to the block
-            replacementPolicy->setCurrentAddr(blk->getTag(), blk_index);
+            replacementPolicy->setCurrentAddr(blk->getTag(), blk->getSet());
             blk->replacementData = replacementPolicy->instantiateEntry();
         }
     }

@@ -27,7 +27,7 @@ struct _slist_
     Node *head {NULL};
     Node *tail {NULL};
     uint32_t length {0};
-    
+
     _slist_():head(NULL), tail(NULL), length(0){}
 };
 
