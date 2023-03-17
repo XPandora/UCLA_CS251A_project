@@ -83,6 +83,7 @@ namespace gem5
             blk->data = &dataBlks[blkSize * blk_index];
 
             // Associate a replacement data entry to the block
+            replacementPolicy->setCurrentAddr(blk->getTag(), blk_index);
             blk->replacementData = replacementPolicy->instantiateEntry();
         }
     }
@@ -96,9 +97,9 @@ namespace gem5
         stats.tagsInUse--;
 
         // Invalidate replacement data
-        if (typeid(*replacementPolicy).name() == "ARC")
-            // dynamic_cast<replacement_policy::ARC *>(replacementPolicy)->setCurrentAddr(blk->getTag(), blk->getSet());
-            replacementPolicy->setCurrentAddr(blk->getTag(), blk->getSet());
+        // if (typeid(*replacementPolicy).name() == "ARC")
+        // dynamic_cast<replacement_policy::ARC *>(replacementPolicy)->setCurrentAddr(blk->getTag(), blk->getSet());
+        replacementPolicy->setCurrentAddr(blk->getTag(), blk->getSet());
         replacementPolicy->invalidate(blk->replacementData);
     }
 
@@ -110,14 +111,14 @@ namespace gem5
         // Since the blocks were using different replacement data pointers,
         // we must touch the replacement data of the new entry, and invalidate
         // the one that is being moved.
-        if (typeid(*replacementPolicy).name() == "ARC")
-            // dynamic_cast<replacement_policy::ARC *>(replacementPolicy)->setCurrentAddr(src_blk->getTag(), src_blk->getSet());
-            replacementPolicy->setCurrentAddr(src_blk->getTag(), src_blk->getSet());
+        // if (typeid(*replacementPolicy).name() == "ARC")
+        // dynamic_cast<replacement_policy::ARC *>(replacementPolicy)->setCurrentAddr(src_blk->getTag(), src_blk->getSet());
+        replacementPolicy->setCurrentAddr(src_blk->getTag(), src_blk->getSet());
         replacementPolicy->invalidate(src_blk->replacementData);
 
-        if (typeid(*replacementPolicy).name() == "ARC")
-            // dynamic_cast<replacement_policy::ARC *>(replacementPolicy)->setCurrentAddr(dest_blk->getTag(), dest_blk->getSet());
-            replacementPolicy->setCurrentAddr(dest_blk->getTag(), dest_blk->getSet());
+        // if (typeid(*replacementPolicy).name() == "ARC")
+        // dynamic_cast<replacement_policy::ARC *>(replacementPolicy)->setCurrentAddr(dest_blk->getTag(), dest_blk->getSet());
+        replacementPolicy->setCurrentAddr(dest_blk->getTag(), dest_blk->getSet());
         replacementPolicy->reset(dest_blk->replacementData);
     }
 

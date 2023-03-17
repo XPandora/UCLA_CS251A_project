@@ -80,17 +80,21 @@ namespace gem5
       mutable unsigned int c = 0; // set*way;
       mutable unsigned int p = 0;
 
-      Slist s1 = slist_new();
-      Slist *T1 = &s1;
+      std::vector<std::shared_ptr<Slist>> T1_vec;
+      std::vector<std::shared_ptr<Slist>> B1_vec;
+      std::vector<std::shared_ptr<Slist>> T2_vec;
+      std::vector<std::shared_ptr<Slist>> B2_vec;
+      // Slist s1 = slist_new();
+      // Slist *T1 = &s1;
 
-      Slist s2 = slist_new();
-      Slist *B1 = &s2;
+      // Slist s2 = slist_new();
+      // Slist *B1 = &s2;
 
-      Slist s3 = slist_new();
-      Slist *T2 = &s3;
+      // Slist s3 = slist_new();
+      // Slist *T2 = &s3;
 
-      Slist s4 = slist_new();
-      Slist *B2 = &s4;
+      // Slist s4 = slist_new();
+      // Slist *B2 = &s4;
 
       // uint64_t current_tag;
       // unsigned int current_index;

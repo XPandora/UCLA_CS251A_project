@@ -24,9 +24,11 @@ struct _node_
 
 struct _slist_
 {
-    Node *head;
-    Node *tail;
-    uint32_t length;
+    Node *head {NULL};
+    Node *tail {NULL};
+    uint32_t length {0};
+    
+    _slist_():head(NULL), tail(NULL), length(0){}
 };
 
 /* public interface for user*/

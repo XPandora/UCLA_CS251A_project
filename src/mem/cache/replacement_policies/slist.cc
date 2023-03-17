@@ -5,7 +5,8 @@
 #include <stdio.h>
 Slist slist_new()
 {
-    Slist s = {NULL, NULL, 0};
+    // Slist s = {NULL, NULL, 0};
+    Slist s = _slist_();
     return s;
 }
 
@@ -47,11 +48,9 @@ Node *slist_lookup(Slist *list, BlockPA key)
     for (cur = list->head; cur != NULL; cur = cur->next)
     {
         if (cur->data == key)
-        {
             return (cur);
-            break;
-        }
     }
+
     return (NULL);
 }
 
@@ -64,28 +63,35 @@ Slist *slist_look_del(Slist *list, BlockPA key)
     Node *temp, *prev;
     prev = NULL;
     temp = list->head;
+    assert(temp != NULL);
     if (list->length == 1)
     {
-        list->head = NULL;
-        list->tail = NULL;
-        list->length = 0;
+        if (key == temp->data)
+        {
+            list->head = NULL;
+            list->tail = NULL;
+            list->length = 0;
+            free(temp);
+        }
     }
-    else if (temp != NULL && temp->data == key)
+    else if (temp->data == key)
     {
         list->head = temp->next;
         free(temp);
         --list->length;
-        return list;
     }
     else
     {
         for (temp = list->head; temp != NULL; temp = temp->next)
         {
-
             if (temp->data == key)
             {
                 assert(prev != NULL);
                 prev->next = temp->next;
+                if(temp == list->tail)
+                    list->tail = prev;
+
+                break;
             }
             prev = temp;
         }
@@ -137,11 +143,21 @@ Slist *slist_delete_tail(Slist *list)
     Node *cur, *temp;
     if (list->tail != NULL)
     {
+        assert(list->head != NULL);
         temp = list->tail;
-        for (cur = list->head; cur->next != temp; cur = cur->next)
-            ;
-        list->tail = cur;
-        cur->next = NULL;
+        if (list->head == list->tail)
+        {
+            list->head = NULL;
+            list->tail = NULL;
+            assert(list->length == 1);
+        }
+        else
+        {
+            for (cur = list->head; cur->next != temp; cur = cur->next)
+                ;
+            list->tail = cur;
+            cur->next = NULL;
+        }
         free(temp);
         --list->length;
     }
@@ -165,12 +181,20 @@ Slist *slist_repl_head(Slist *list, Node *repl)
     {
         for (temp = list->head; temp != NULL; temp = temp->next)
         {
-
             if (temp->next == repl)
             {
-                temp->next = repl->next;
+                if (repl == list->tail)
+                {
+                    list->tail = temp;
+                    temp->next = NULL;
+                    assert(repl->next == NULL);
+                }
+                else
+                    temp->next = repl->next;
+                
                 repl->next = list->head;
                 list->head = repl;
+
                 break;
             }
         }

@@ -58,21 +58,36 @@ namespace gem5
         // The invalid ones can be deleted later
         bool ARC::REPLACE(BlockPA blockPA) const
         {
+            // printf("replace start\n");
+            assert(current_index < T1_vec.size());
+            Slist *T1 = T1_vec[current_index].get();
+            Slist *B1 = B1_vec[current_index].get();
+            Slist *T2 = T2_vec[current_index].get();
+            Slist *B2 = B2_vec[current_index].get();
+
             uint32_t T1_len = slist_length(T1);
             bool remove_L1;
 
             // invalidate the LRU page in T1 and move to MRU position in B
-            if (T1_len > 0 && (T1_len > p || (slist_lookup(B2, blockPA) && T1_len == p)))
+            if (T1_len > 0 && (T1_len > p || (slist_lookup(B2, blockPA) != NULL && T1_len == p)))
                 remove_L1 = true;
             else
                 remove_L1 = false;
 
+            // printf("replace end\n");
             return remove_L1;
         }
 
         void
         ARC::invalidate(const std::shared_ptr<ReplacementData> &replacement_data)
         {
+            // printf("invalid start\n");
+            assert(current_index < T1_vec.size());
+            Slist *T1 = T1_vec[current_index].get();
+            Slist *B1 = B1_vec[current_index].get();
+            Slist *T2 = T2_vec[current_index].get();
+            Slist *B2 = B2_vec[current_index].get();
+
             // Reset last touch timestamp
             std::static_pointer_cast<ARCReplData>(replacement_data)->lastTouchTick = Tick(0);
 
@@ -81,24 +96,35 @@ namespace gem5
             BlockPA blockPA{current_tag, current_index, NULL};
             if (std::static_pointer_cast<ARCReplData>(replacement_data)->status == EntryStatus::inList1)
             {
+                assert(slist_lookup(T1, blockPA) != NULL);
                 slist_look_del(T1, blockPA);
             }
             else if (std::static_pointer_cast<ARCReplData>(replacement_data)->status == EntryStatus::inList2)
             {
+                assert(slist_lookup(T2, blockPA) != NULL);
                 slist_look_del(T2, blockPA);
             }
             else
             {
                 // should not invalidate a invalid block
-                assert(false);
+                assert(slist_lookup(T1, blockPA) == NULL && slist_lookup(T2, blockPA) == NULL);
+                // assert(false);
             }
 
             std::static_pointer_cast<ARCReplData>(replacement_data)->status = EntryStatus::Invalid;
+            // printf("invalid end\n");
         }
 
         void
         ARC::touch(const std::shared_ptr<ReplacementData> &replacement_data) const
         {
+            // printf("touch start\n");
+            assert(current_index < T1_vec.size());
+            Slist *T1 = T1_vec[current_index].get();
+            Slist *B1 = B1_vec[current_index].get();
+            Slist *T2 = T2_vec[current_index].get();
+            Slist *B2 = B2_vec[current_index].get();
+
             // touch is always a cache hit
             // data should always in T1 or T2;
             EntryStatus data_status = std::static_pointer_cast<ARCReplData>(replacement_data)->status;
@@ -110,21 +136,32 @@ namespace gem5
 
             if (data_status == EntryStatus::inList1)
             {
+                assert(slist_lookup(T1, blockPA) != NULL && slist_lookup(T2, blockPA) == NULL);
                 slist_look_del(T1, blockPA);
                 slist_add_head(T2, blockPA);
+                assert(slist_lookup(T2, blockPA) != NULL && slist_lookup(T1, blockPA) == NULL);
             }
             else if (data_status == EntryStatus::inList2)
             {
-                Node* node = slist_lookup(T2, blockPA);
+                assert(slist_lookup(T2, blockPA) != NULL && slist_lookup(T1, blockPA) == NULL);
+                Node *node = slist_lookup(T2, blockPA);
                 slist_repl_head(T2, node);
+                assert(slist_lookup(T2, blockPA) != NULL && slist_lookup(T1, blockPA) == NULL);
             }
             // Update variables
             std::static_pointer_cast<ARCReplData>(replacement_data)->status = EntryStatus::inList2;
+            // printf("touch end\n");
         }
 
         void
         ARC::reset(const std::shared_ptr<ReplacementData> &replacement_data) const
         {
+            // printf("reset start\n");
+            assert(current_index < T1_vec.size());
+            Slist *T1 = T1_vec[current_index].get();
+            Slist *B1 = B1_vec[current_index].get();
+            Slist *T2 = T2_vec[current_index].get();
+            Slist *B2 = B2_vec[current_index].get();
             // Set last touch timestamp
             std::static_pointer_cast<ARCReplData>(replacement_data)->lastTouchTick = curTick();
             std::static_pointer_cast<ARCReplData>(replacement_data)->tag = current_tag;
@@ -136,6 +173,7 @@ namespace gem5
             {
                 // case 1: found in B1
                 // move from B1 to MRU in T2
+                assert(slist_lookup(B1, blockPA) != NULL);
                 slist_look_del(B1, blockPA);
                 slist_add_head(T2, blockPA);
                 std::static_pointer_cast<ARCReplData>(replacement_data)->status = EntryStatus::inList2;
@@ -145,6 +183,7 @@ namespace gem5
             {
                 // case 2: found in B2
                 // move from B2 to MRU in T2
+                assert(slist_lookup(B2, blockPA) != NULL);
                 slist_look_del(B2, blockPA);
                 slist_add_head(T2, blockPA);
                 std::static_pointer_cast<ARCReplData>(replacement_data)->status = EntryStatus::inList2;
@@ -154,10 +193,12 @@ namespace gem5
             {
                 // case 3: not found in any list
                 // move to MRU in T1
+                assert(slist_lookup(T1, blockPA) == NULL);
                 slist_add_head(T1, blockPA);
                 std::static_pointer_cast<ARCReplData>(replacement_data)->status = EntryStatus::inList1;
                 // assert(*blockPA.status == EntryStatus::inList1);
             }
+            // printf("reset end\n");
         }
 
         ReplaceableEntry *
@@ -168,7 +209,13 @@ namespace gem5
             // 2. call reset() to insert new data to the position of victim
             // I only perform operations for victim blocks in getVictim but leave the rest part for reset
 
+            // printf("victim start\n");
+            assert(current_index < T1_vec.size());
             // There must be at least one replacement candidate
+            Slist *T1 = T1_vec[current_index].get();
+            Slist *B1 = B1_vec[current_index].get();
+            Slist *T2 = T2_vec[current_index].get();
+            Slist *B2 = B2_vec[current_index].get();
             assert(candidates.size() > 0);
 
             // Visit all candidates to find victim
@@ -181,32 +228,40 @@ namespace gem5
                 if (std::static_pointer_cast<ARCReplData>(candidate->replacementData)->status == EntryStatus::Invalid)
                 {
                     victim = candidate;
+                    // printf("victim end\n");
                     return victim;
                 }
             }
 
+            // printf("victim part1\n");
             BlockPA blockPA{current_tag, current_index, NULL};
             // Adaption
             // use MRU of L1 or L2 as victim
             bool remove_L1;
             if (slist_lookup(B1, blockPA) != NULL)
             {
+                // printf("B1 start\n");
                 // x in B1, (a miss in ARC(c), a hit in DBL(2c)
                 p = std::min(c, p + std::max(slist_length(B2) / slist_length(B1), (unsigned int)1));
                 remove_L1 = REPLACE(blockPA);
+                // printf("B1 end\n");
             }
             else if (slist_lookup(B2, blockPA) != NULL)
             {
+                // printf("B2 start\n");
                 // x in B2 (a miss in ARC(c), a hit in DBL(2c))
                 p = std::max((unsigned int)0, p - std::max(slist_length(B1) / slist_length(B2), (unsigned int)1));
                 remove_L1 = REPLACE(blockPA);
+                // printf("B1 end\n");
             }
             else
             {
+                // printf("Not found start\n");
                 // x not found in L1 U L2
                 // Case A: T1 U B1 has c pages
                 if ((slist_length(T1) + slist_length(B1)) == c)
                 {
+                    // printf("=c pages\n");
                     // delete LRU in B1, replace
                     if (slist_length(T1) < c)
                     {
@@ -222,6 +277,7 @@ namespace gem5
                 // Case B: T1 U B1 has less than C pages
                 else
                 {
+                    // printf("<c pages\n");
                     int32_t sum = slist_length(T1) + slist_length(T2) + slist_length(B1) + slist_length(B2);
                     if (sum >= c)
                     {
@@ -236,8 +292,10 @@ namespace gem5
                         assert(false);
                     }
                 }
+                // printf("Not found end\n");
             }
 
+            // printf("victim part2\n");
             if (remove_L1)
             {
                 // Check T1 list for the LRU one
@@ -292,12 +350,27 @@ namespace gem5
                 slist_look_del(T2, victim_block);
             }
 
+            std::static_pointer_cast<ARCReplData>(victim->replacementData)->status = EntryStatus::Invalid;
+            // printf("victim end\n");
             return victim;
         }
 
         std::shared_ptr<ReplacementData>
         ARC::instantiateEntry()
         {
+            if (current_index >= T1_vec.size())
+            {
+                T1_vec.push_back(std::make_shared<Slist>());
+                B1_vec.push_back(std::make_shared<Slist>());
+                T2_vec.push_back(std::make_shared<Slist>());
+                B2_vec.push_back(std::make_shared<Slist>());
+                this->c = 1;
+            }
+            else
+            {
+                this->c++;
+            }
+
             return std::shared_ptr<ReplacementData>(new ARCReplData());
         }
 

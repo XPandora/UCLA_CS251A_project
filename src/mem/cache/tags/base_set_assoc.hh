@@ -152,9 +152,9 @@ namespace gem5
                 blk->increaseRefCount();
 
                 // Update replacement data of accessed block
-                if (typeid(*replacementPolicy).name() == "ARC")
-                    // dynamic_cast<replacement_policy::ARC*>(replacementPolicy)->setCurrentAddr(blk->getTag(), blk->getSet());
-                    replacementPolicy->setCurrentAddr(blk->getTag(), blk->getSet());
+                // if (typeid(*replacementPolicy).name() == "ARC")
+                // dynamic_cast<replacement_policy::ARC*>(replacementPolicy)->setCurrentAddr(blk->getTag(), blk->getSet());
+                replacementPolicy->setCurrentAddr(blk->getTag(), blk->getSet());
                 replacementPolicy->touch(blk->replacementData, pkt);
             }
 
@@ -182,13 +182,13 @@ namespace gem5
             const std::vector<ReplaceableEntry *> entries =
                 indexingPolicy->getPossibleEntries(addr);
 
-            if (typeid(*replacementPolicy).name() == "ARC")
-            {
-                uint64_t tag = indexingPolicy->extractTag(addr);
-                unsigned int index = entries[0]->getSet();
-                // dynamic_cast<replacement_policy::ARC *>(replacementPolicy)->setCurrentAddr(tag, index);
-                replacementPolicy->setCurrentAddr(tag, index);
-            }
+            // if (typeid(*replacementPolicy).name() == "ARC")
+            // {
+            uint64_t tag = indexingPolicy->extractTag(addr);
+            unsigned int index = entries[0]->getSet();
+            // dynamic_cast<replacement_policy::ARC *>(replacementPolicy)->setCurrentAddr(tag, index);
+            replacementPolicy->setCurrentAddr(tag, index);
+            // }
             // Choose replacement victim from replacement candidates
             CacheBlk *victim = static_cast<CacheBlk *>(replacementPolicy->getVictim(
                 entries));
@@ -214,9 +214,7 @@ namespace gem5
             stats.tagsInUse++;
 
             // Update replacement policy
-            if (typeid(*replacementPolicy).name() == "ARC")
-                // dynamic_cast<replacement_policy::ARC *>(replacementPolicy)->setCurrentAddr(blk->getTag(), blk->getSet());
-                replacementPolicy->setCurrentAddr(blk->getTag(), blk->getSet());
+            replacementPolicy->setCurrentAddr(blk->getTag(), blk->getSet());
             replacementPolicy->reset(blk->replacementData, pkt);
         }
 
