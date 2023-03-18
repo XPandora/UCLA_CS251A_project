@@ -91,6 +91,7 @@ namespace gem5
     void
     BaseSetAssoc::invalidate(CacheBlk *blk)
     {
+        replacementPolicy->setCurrentAddr(blk->getTag(), blk->getSet());
         BaseTags::invalidate(blk);
 
         // Decrease the number of tags in use
@@ -99,7 +100,7 @@ namespace gem5
         // Invalidate replacement data
         // if (typeid(*replacementPolicy).name() == "ARC")
         // dynamic_cast<replacement_policy::ARC *>(replacementPolicy)->setCurrentAddr(blk->getTag(), blk->getSet());
-        replacementPolicy->setCurrentAddr(blk->getTag(), blk->getSet());
+        // replacementPolicy->setCurrentAddr(blk->getTag(), blk->getSet());
         replacementPolicy->invalidate(blk->replacementData);
     }
 

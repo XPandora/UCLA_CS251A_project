@@ -73,6 +73,7 @@ namespace gem5
         void
         ARC::invalidate(const std::shared_ptr<ReplacementData> &replacement_data)
         {
+            printf("invalid tag: %u, index: %u \n", current_tag, current_index);
             assert(current_index < T1_vec.size());
             Slist *T1 = T1_vec[current_index].get();
             Slist *B1 = B1_vec[current_index].get();
@@ -111,6 +112,7 @@ namespace gem5
             Slist *B1 = B1_vec[current_index].get();
             Slist *T2 = T2_vec[current_index].get();
             Slist *B2 = B2_vec[current_index].get();
+            printf("touch tag: %u, index: %u \n", current_tag, current_index);
 
             // touch is always a cache hit
             // data should always in T1 or T2;
@@ -154,6 +156,7 @@ namespace gem5
             std::static_pointer_cast<ARCReplData>(replacement_data)->lastTouchTick = curTick();
             std::static_pointer_cast<ARCReplData>(replacement_data)->tag = current_tag;
             std::static_pointer_cast<ARCReplData>(replacement_data)->index = current_index;
+            printf("reset tag: %u, index: %u \n", current_tag, current_index);
 
             BlockPA blockPA{current_tag, current_index, NULL};
             assert(slist_lookup(T1, blockPA) == NULL && slist_lookup(T2, blockPA) == NULL);
@@ -193,7 +196,7 @@ namespace gem5
             // 1. call getVictim to find a position
             // 2. call reset() to insert new data to the position of victim
             // I only perform operations for victim blocks in getVictim but leave the rest part for reset
-
+            printf("getVictim tag: %u, index: %u \n", current_tag, current_index);
             assert(current_index < T1_vec.size());
             // There must be at least one replacement candidate
             Slist *T1 = T1_vec[current_index].get();
@@ -216,10 +219,7 @@ namespace gem5
                 }
             }
 
-            if (slist_length(T1) + slist_length(T2) != c)
-            {
-                printf("T1 + T2 = %d, c=%d", slist_length(T1) + slist_length(T2), this->c);
-            }
+            assert(current_index == std::static_pointer_cast<ARCReplData>(candidates[0]->replacementData)->index);
             assert(slist_length(T1) + slist_length(T2) == c);
             BlockPA blockPA{current_tag, current_index, NULL};
             // Adaption
@@ -229,20 +229,23 @@ namespace gem5
             {
                 // x in B1, (a miss in ARC(c), a hit in DBL(2c)
                 p = std::min(c, p + std::max(slist_length(B2) / slist_length(B1), (unsigned int)1));
+                assert(p <= c);
                 remove_L1 = REPLACE(blockPA);
             }
             else if (slist_lookup(B2, blockPA) != NULL)
             {
                 // x in B2 (a miss in ARC(c), a hit in DBL(2c))
-                p = std::max((unsigned int)0, p - std::max(slist_length(B1) / slist_length(B2), (unsigned int)1));
+                p = std::max(0, (int)p - std::max((int)(slist_length(B1) / slist_length(B2)), 1));
+                assert(p <= c);
                 remove_L1 = REPLACE(blockPA);
             }
             else
             {
                 // x not found in L1 U L2
                 // Case A: T1 U B1 has c pages
-                if ((slist_length(T1) + slist_length(B1)) >= c)
+                if (slist_length(T1) + slist_length(B1) >= c)
                 {
+                    assert(slist_length(T1) + slist_length(B1) == c);
                     // delete LRU in B1, replace
                     if (slist_length(T1) < c)
                     {
@@ -263,6 +266,7 @@ namespace gem5
                     {
                         if (sum >= 2 * c)
                         {
+                            assert(sum == 2 * c);
                             slist_delete_tail(B2);
                         }
                         remove_L1 = REPLACE(blockPA);
@@ -321,6 +325,8 @@ namespace gem5
                 slist_delete_tail(T2);
             }
 
+            printf("getVictim victim tag: %u, index: %u \n", std::static_pointer_cast<ARCReplData>(victim->replacementData)->tag,
+                   std::static_pointer_cast<ARCReplData>(victim->replacementData)->index);
             std::static_pointer_cast<ARCReplData>(victim->replacementData)->status = EntryStatus::Invalid;
             return victim;
         }
