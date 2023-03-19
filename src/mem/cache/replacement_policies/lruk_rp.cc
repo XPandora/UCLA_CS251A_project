@@ -56,7 +56,7 @@ namespace gem5
 
             std::static_pointer_cast<LRUKReplData>(
                 replacement_data)
-                ->history.assign();
+                ->history.assign(k, 0);
         }
 
         void
