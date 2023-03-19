@@ -46,9 +46,10 @@ namespace gem5
         {
         }
 
-        void
-        LRUK::replaceLRUHistory(HistoryData history_data, std::vector<HistoryData> &history)
+        int
+        LRUK::replaceLRUHistory(HistoryData history_data, std::vector<HistoryData> &history) const
         {
+            assert(history.size() > 0);
             Tick min_Tick = history[0].lastTouchTick;
             int pos = 0;
             for (int i = 1; i < history.size(); i++)
@@ -62,10 +63,11 @@ namespace gem5
 
             history[pos] = history_data;
             history_tables[current_index] = history;
+            return pos;
         }
 
         int
-        LRUK::findHistory(uint64_t tag, const std::vector<HistoryData> &history)
+        LRUK::findHistory(uint64_t tag, const std::vector<HistoryData> &history) const
         {
             for (int i = 0; i < history.size(); i++)
             {
@@ -75,22 +77,28 @@ namespace gem5
             return -1;
         }
 
-        void addHistory(uint64_t tag, std::vector<HistoryData> &history)
+        int LRUK::addHistory(uint64_t tag, std::vector<HistoryData> &history) const
         {
             HistoryData history_data(tag);
             history_data.lastTouchTick = curTick();
             history_data.refCount = 1;
+            int pos;
             if (history.size() < max_history)
+            {
+                pos = history.size();
                 history.push_back(history_data);
+            }
             else
-                replaceLRUHistory(history_data, history);
+                pos = replaceLRUHistory(history_data, history);
+
+            return pos;
         }
 
         void
         LRUK::invalidate(const std::shared_ptr<ReplacementData> &replacement_data)
         {
             // Reset last touch timestamp
-            std::static_pointer_cast<LRUReplData>(
+            std::static_pointer_cast<LRUKReplData>(
                 replacement_data)
                 ->lastTouchTick = Tick(0);
         }
@@ -101,21 +109,23 @@ namespace gem5
             // Update last touch timestamp
             std::vector<HistoryData> history = history_tables[current_index];
             int pos = findHistory(current_tag, history);
+
             if (pos >= 0)
             {
                 history[pos].lastTouchTick = curTick();
                 history[pos].refCount++;
-
-                if (history[pos].refCount >= k)
-                {
-                    history.erase(history.begin() + pos);
-                    std::static_pointer_cast<LRUReplData>(replacement_data)->lastTouchTick = curTick();
-                }
             }
             else
             {
-                addHistory(current_tag, history);
+                pos = addHistory(current_tag, history);
             }
+
+            if (history[pos].refCount >= k)
+            {
+                history.erase(history.begin() + pos);
+                std::static_pointer_cast<LRUKReplData>(replacement_data)->lastTouchTick = curTick();
+            }
+
             history_tables[current_index] = history;
         }
 
@@ -123,7 +133,7 @@ namespace gem5
         LRUK::reset(const std::shared_ptr<ReplacementData> &replacement_data) const
         {
             // Set last touch timestamp
-            std::static_pointer_cast<LRUReplData>(
+            std::static_pointer_cast<LRUKReplData>(
                 replacement_data)
                 ->lastTouchTick = curTick();
         }
@@ -140,30 +150,30 @@ namespace gem5
             {
                 history[pos].lastTouchTick = curTick();
                 history[pos].refCount++;
-
-                if (history[pos].refCount >= k)
-                {
-                    history.erase(history.begin() + pos);
-                    // Visit all candidates to find victim
-                    victim = candidates[0];
-                    for (const auto &candidate : candidates)
-                    {
-                        // Update victim entry if necessary
-                        if (std::static_pointer_cast<LRUReplData>(
-                                candidate->replacementData)
-                                ->lastTouchTick <
-                            std::static_pointer_cast<LRUReplData>(
-                                victim->replacementData)
-                                ->lastTouchTick)
-                        {
-                            victim = candidate;
-                        }
-                    }
-                }
             }
             else
             {
-                addHistory(current_tag, history);
+                pos = addHistory(current_tag, history);
+            }
+
+            if (history[pos].refCount >= k)
+            {
+                history.erase(history.begin() + pos);
+                // Visit all candidates to find victim
+                victim = candidates[0];
+                for (const auto &candidate : candidates)
+                {
+                    // Update victim entry if necessary
+                    if (std::static_pointer_cast<LRUKReplData>(
+                            candidate->replacementData)
+                            ->lastTouchTick <
+                        std::static_pointer_cast<LRUKReplData>(
+                            victim->replacementData)
+                            ->lastTouchTick)
+                    {
+                        victim = candidate;
+                    }
+                }
             }
 
             history_tables[current_index] = history;
@@ -177,12 +187,12 @@ namespace gem5
             if (current_index >= history_tables.size())
             {
                 std::vector<HistoryData> history;
-                history_table.push_back(history);
+                history_tables.push_back(history);
             }
 
-            this->c = std::max(c, this->block_num / history_tables.size());
-            this->max_history = 4 * this->c;
-            return std::shared_ptr<ReplacementData>(new LRUReplData());
+            this->c = std::max(c, this->block_num / (int)history_tables.size());
+            this->max_history = 2 * this->c;
+            return std::shared_ptr<ReplacementData>(new LRUKReplData());
         }
 
     } // namespace replacement_policy

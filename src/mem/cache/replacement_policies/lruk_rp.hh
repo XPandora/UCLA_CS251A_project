@@ -41,7 +41,7 @@
 namespace gem5
 {
 
-    struct LRURPParams;
+    struct LRUKRPParams;
 
     GEM5_DEPRECATED_NAMESPACE(ReplacementPolicy, replacement_policy);
     namespace replacement_policy
@@ -51,7 +51,7 @@ namespace gem5
         {
         protected:
             /** LRUK-specific implementation of replacement data. */
-            struct LRUReplData : ReplacementData
+            struct LRUKReplData : ReplacementData
             {
                 /** Tick on which the entry was last touched. */
                 Tick lastTouchTick;
@@ -59,7 +59,7 @@ namespace gem5
                 /**
                  * Default constructor. Invalidate data.
                  */
-                LRUReplData() : lastTouchTick(0) {}
+                LRUKReplData() : lastTouchTick(0) {}
             };
 
             struct HistoryData
@@ -75,13 +75,15 @@ namespace gem5
             int block_num = 0;
             int c = 0; // set*way;
             int max_history = 0;
-            std::vector<std::vector<HistoryData>> history_tables;
-            void replaceLRUHistory(HistoryData history_data, std::vector<HistoryData> &history);
-            int findHistory(uint64_t tag, const std::vector<HistoryData> &history);
-            void addHistory(uint64_t tag, std::vector<HistoryData> &history);
+            mutable std::vector<std::vector<HistoryData>> history_tables;
+
+
+            int replaceLRUHistory(HistoryData history_data, std::vector<HistoryData> &history) const;
+            int findHistory(uint64_t tag, const std::vector<HistoryData> &history) const;
+            int addHistory(uint64_t tag, std::vector<HistoryData> &history) const;
 
         public:
-            typedef LRURPParams Params;
+            typedef LRUKRPParams Params;
             LRUK(const Params &p);
             ~LRUK() = default;
 
