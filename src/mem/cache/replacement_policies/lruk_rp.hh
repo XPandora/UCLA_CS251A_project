@@ -55,33 +55,15 @@ namespace gem5
             {
                 /** Tick on which the entry was last touched. */
                 Tick lastTouchTick;
-
+                std::vector<Tick> history;
                 /**
                  * Default constructor. Invalidate data.
                  */
-                LRUKReplData() : lastTouchTick(0) {}
-            };
-
-            struct HistoryData
-            {
-                uint64_t tag;
-                Tick lastTouchTick;
-                int refCount;
-
-                HistoryData(uint64_t tag) : tag(tag), lastTouchTick(0), refCount(0) {}
+                LRUKReplData(int size) : lastTouchTick(0) {history.assign(size, 0);}
             };
 
             int k = 2;
-            int block_num = 0;
-            int c = 0; // set*way;
-            int max_history = 0;
-            mutable std::vector<std::vector<HistoryData>> history_tables;
-
-
-            int replaceLRUHistory(HistoryData history_data, std::vector<HistoryData> &history) const;
-            int findHistory(uint64_t tag, const std::vector<HistoryData> &history) const;
-            int addHistory(uint64_t tag, std::vector<HistoryData> &history) const;
-
+            int CPR = 10; // correlated reference period 
         public:
             typedef LRUKRPParams Params;
             LRUK(const Params &p);
